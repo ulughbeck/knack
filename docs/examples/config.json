@@ -1,0 +1,25 @@
+{
+  "agents": [
+    {
+      "id": "codex",
+      "displayName": "Codex",
+      "globalConfig": ".codex",
+      "projectConfig": ".codex",
+      "skillsDir": "skills"
+    },
+    {
+      "id": "claude",
+      "displayName": "Claude",
+      "globalConfig": ".claude",
+      "projectConfig": ".claude",
+      "skillsDir": "skills"
+    },
+    {
+      "id": "custom-agent",
+      "displayName": "Custom Agent",
+      "globalConfig": ".customagent",
+      "projectConfig": ".customagent",
+      "skillsDir": "skills"
+    }
+  ]
+}

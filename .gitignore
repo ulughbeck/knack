@@ -1,0 +1,22 @@
+# Go build cache
+.gocache/
+
+# Binaries
+/.bin/
+/knack
+/dist/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Project metadata
+/AGENTS.md
+/docs/plans/
+
+# Agents
+/.codex/
+/.claude/
