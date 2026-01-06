@@ -1,10 +1,8 @@
-# Go build cache
-.gocache/
-
 # Binaries
 /.bin/
-/knack
-/dist/
+
+# Rust build output
+/target/
 
 # OS
 .DS_Store
@@ -20,3 +18,4 @@
 # Agents
 /.codex/
 /.claude/
+/.github/skills
