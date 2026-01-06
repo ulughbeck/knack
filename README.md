@@ -157,8 +157,7 @@ Blank fields indicate no default path is required for that tool.
 | opencode | OpenCode | .config/opencode | .opencode | skill |
 | goose | Goose | .config/goose | .goose | skills |
 | copilot | GitHub Copilot | - | .github | skills |
-| letta | Letta | - | .skills | - |
-| cursor | Cursor | .cursor | .cursor | skills |
+| cursor-agent | Cursor | .cursor | .cursor | skills |
 
 ### Config format
 To add any custom agents just edit the config file. Each agent entry requires:

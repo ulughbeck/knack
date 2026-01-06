@@ -94,6 +94,10 @@ pub fn filter_scope(targets: &[Target], scope: Scope) -> Vec<Target> {
         .collect()
 }
 
+pub fn global_skills_dir(agent: &Agent) -> Option<PathBuf> {
+    resolve_global_config(agent).map(|root| join_skills_dir(&root, &agent.skills_dir))
+}
+
 fn resolve_project_config(agent: &Agent, cwd: &Path) -> Option<PathBuf> {
     if agent.project_config.is_empty() {
         return None;

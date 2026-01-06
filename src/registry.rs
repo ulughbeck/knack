@@ -53,19 +53,12 @@ pub fn default_agents() -> Vec<Agent> {
         Agent {
             id: "copilot".to_string(),
             display_name: "GitHub Copilot".to_string(),
-            global_config: String::new(),
+            global_config: ".copilot".to_string(),
             project_config: ".github".to_string(),
             skills_dir: "skills".to_string(),
         },
         Agent {
-            id: "letta".to_string(),
-            display_name: "Letta".to_string(),
-            global_config: String::new(),
-            project_config: ".skills".to_string(),
-            skills_dir: String::new(),
-        },
-        Agent {
-            id: "cursor".to_string(),
+            id: "cursor-agent".to_string(),
             display_name: "Cursor".to_string(),
             global_config: ".cursor".to_string(),
             project_config: ".cursor".to_string(),

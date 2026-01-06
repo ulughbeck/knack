@@ -6,9 +6,10 @@ use knack::registry::Agent;
 use knack::skills;
 use knack::sync;
 use knack::{KnackError, Result};
-use std::collections::HashSet;
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
@@ -496,7 +497,7 @@ fn run_rm(skill_name: &str, force_project: bool) -> i32 {
 }
 
 fn run_doctor() -> i32 {
-    let (_config, targets, _global_targets) = match load_config_and_targets() {
+    let (config, targets, _global_targets) = match load_config_and_targets() {
         Ok(data) => data,
         Err(err) => {
             eprintln!("{}", err);
@@ -504,13 +505,30 @@ fn run_doctor() -> i32 {
         }
     };
 
-    let global_targets = detector::filter_scope(&targets, Scope::Global);
     let project_targets = detector::filter_scope(&targets, Scope::Project);
 
-    print_doctor_section("Agents found:", &global_targets);
+    let agent_statuses = build_agent_statuses(&config);
+    print_doctor_agents("Agents:", &agent_statuses);
     if !project_targets.is_empty() {
         println!("");
         print_doctor_section("Project settings:", &project_targets);
+    }
+
+    let mut config = config;
+    match sync_global_skills_config(&mut config) {
+        Ok(changed) => {
+            if changed || !config.exists {
+                config.exists = true;
+                if let Err(err) = config::save(&config) {
+                    eprintln!("{}", err);
+                    return 1;
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("{}", err);
+            return 1;
+        }
     }
 
     0
@@ -519,7 +537,12 @@ fn run_doctor() -> i32 {
 fn load_config_and_targets() -> Result<(config::ConfigState, Vec<Target>, Vec<Target>)> {
     let config = config::load()?;
     let cwd = std::env::current_dir()?;
-    let (targets, _) = detector::detect_targets(&config.agents, &cwd);
+    let (mut targets, _) = detector::detect_targets(&config.agents, &cwd);
+    if let Some(home) = dirs::home_dir() {
+        if cwd == home {
+            targets = detector::filter_scope(&targets, Scope::Global);
+        }
+    }
     let global_targets = detector::filter_scope(&targets, Scope::Global);
     Ok((config, targets, global_targets))
 }
@@ -541,6 +564,129 @@ fn print_doctor_section(title: &str, targets: &[Target]) {
         }
         println!("- {} (skills={})", target.agent.display_name, count);
     }
+}
+
+struct AgentStatus {
+    agent: Agent,
+    installed: bool,
+    skills_dir: Option<std::path::PathBuf>,
+}
+
+fn build_agent_statuses(config: &config::ConfigState) -> Vec<AgentStatus> {
+    config
+        .agents
+        .iter()
+        .filter(|agent| !agent.id.is_empty())
+        .map(|agent| AgentStatus {
+            agent: agent.clone(),
+            installed: command_exists(&agent.id),
+            skills_dir: detector::global_skills_dir(agent),
+        })
+        .collect()
+}
+
+fn print_doctor_agents(title: &str, agents: &[AgentStatus]) {
+    println!("{}", title);
+    if agents.is_empty() {
+        println!("- None detected.");
+        return;
+    }
+    for status in agents {
+        let installed = if status.installed { "yes" } else { "no" };
+        let (count, warning) = match status.skills_dir.as_ref() {
+            Some(skills_dir) => count_skills(skills_dir),
+            None => (0, None),
+        };
+        if !status.installed && count == 0 && warning.is_none() {
+            continue;
+        }
+        if let Some(warning) = warning {
+            println!(
+                "- {} (installed={}, skills={}, warning={})",
+                status.agent.display_name, installed, count, warning
+            );
+            continue;
+        }
+        if status.skills_dir.is_some() {
+            println!(
+                "- {} (installed={}, skills={})",
+                status.agent.display_name, installed, count
+            );
+        } else {
+            println!("- {} (installed={})", status.agent.display_name, installed);
+        }
+    }
+}
+
+fn sync_global_skills_config(config: &mut config::ConfigState) -> Result<bool> {
+    let mut found: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for agent in &config.agents {
+        if agent.id.is_empty() {
+            continue;
+        }
+        let Some(skills_dir) = detector::global_skills_dir(agent) else {
+            continue;
+        };
+        let entries = match fs::read_dir(&skills_dir) {
+            Ok(entries) => entries,
+            Err(err) => {
+                if err.kind() == std::io::ErrorKind::NotFound {
+                    continue;
+                }
+                return Err(err.into());
+            }
+        };
+        for entry in entries {
+            let entry = entry?;
+            if !entry.file_type()?.is_dir() {
+                continue;
+            }
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name == ".system" {
+                continue;
+            }
+            let path = entry.path();
+            if !path.join("SKILL.md").is_file() {
+                continue;
+            }
+            found
+                .entry(name)
+                .or_default()
+                .insert(agent.id.clone());
+        }
+    }
+
+    let mut changed = false;
+    let mut next = Vec::new();
+    let mut remaining = found;
+    for spec in &config.skills {
+        if let Some(agent_ids) = remaining.remove(&spec.name) {
+            let mut new_spec = spec.clone();
+            let mut agents: Vec<String> = agent_ids.into_iter().collect();
+            agents.sort();
+            if new_spec.agents != agents {
+                new_spec.agents = agents;
+                changed = true;
+            }
+            next.push(new_spec);
+        } else {
+            changed = true;
+        }
+    }
+    for (name, agent_ids) in remaining {
+        let mut agents: Vec<String> = agent_ids.into_iter().collect();
+        agents.sort();
+        next.push(config::SkillSpec {
+            name,
+            source: None,
+            agents,
+        });
+        changed = true;
+    }
+    if changed {
+        config.skills = next;
+    }
+    Ok(changed)
 }
 
 fn resolve_targets_from(
@@ -590,6 +736,15 @@ fn order_targets(mut targets: Vec<Target>) -> Vec<Target> {
         Scope::Project => 1,
     });
     targets
+}
+
+fn command_exists(cmd: &str) -> bool {
+    let output = if cfg!(windows) {
+        Command::new("where").arg(cmd).output()
+    } else {
+        Command::new("which").arg(cmd).output()
+    };
+    output.map(|out| out.status.success()).unwrap_or(false)
 }
 
 fn update_global_config(
