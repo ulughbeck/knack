@@ -156,7 +156,7 @@ Blank fields indicate no default path is required for that tool.
 | amp | Amp | .config/agents | .agents | skills |
 | opencode | OpenCode | .config/opencode | .opencode | skill |
 | goose | Goose | .config/goose | .goose | skills |
-| copilot | GitHub Copilot | - | .github | skills |
+| copilot | GitHub Copilot | .copilot | .github | skills |
 | cursor-agent | Cursor | .cursor | .cursor | skills |
 
 ### Config format
