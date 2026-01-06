@@ -137,9 +137,7 @@ fn extract_jsonc_header(raw: &str) -> &str {
         }
         if idx + 1 < bytes.len() && bytes[idx] == b'/' && bytes[idx + 1] == b'*' {
             idx += 2;
-            while idx + 1 < bytes.len()
-                && !(bytes[idx] == b'*' && bytes[idx + 1] == b'/')
-            {
+            while idx + 1 < bytes.len() && !(bytes[idx] == b'*' && bytes[idx + 1] == b'/') {
                 idx += 1;
             }
             if idx + 1 < bytes.len() {

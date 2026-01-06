@@ -649,10 +649,7 @@ fn sync_global_skills_config(config: &mut config::ConfigState) -> Result<bool> {
             if !path.join("SKILL.md").is_file() {
                 continue;
             }
-            found
-                .entry(name)
-                .or_default()
-                .insert(agent.id.clone());
+            found.entry(name).or_default().insert(agent.id.clone());
         }
     }
 

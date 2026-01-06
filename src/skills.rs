@@ -221,7 +221,7 @@ pub fn copy_path(src: &Path, dest: &Path) -> Result<()> {
     copy_file(src, dest, &meta)
 }
 
-fn copy_dir_inner(src: &Path, dest: &Path, meta: &fs::Metadata) -> Result<()> {
+fn copy_dir_inner(src: &Path, dest: &Path, _meta: &fs::Metadata) -> Result<()> {
     fs::create_dir_all(dest)?;
     for entry in fs::read_dir(src)? {
         let entry = entry?;
@@ -241,12 +241,12 @@ fn copy_dir_inner(src: &Path, dest: &Path, meta: &fs::Metadata) -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(dest, fs::Permissions::from_mode(meta.permissions().mode()))?;
+        fs::set_permissions(dest, fs::Permissions::from_mode(_meta.permissions().mode()))?;
     }
     Ok(())
 }
 
-fn copy_file(src: &Path, dest: &Path, meta: &fs::Metadata) -> Result<()> {
+fn copy_file(src: &Path, dest: &Path, _meta: &fs::Metadata) -> Result<()> {
     if let Some(parent) = dest.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -256,7 +256,7 @@ fn copy_file(src: &Path, dest: &Path, meta: &fs::Metadata) -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(dest, fs::Permissions::from_mode(meta.permissions().mode()))?;
+        fs::set_permissions(dest, fs::Permissions::from_mode(_meta.permissions().mode()))?;
     }
     Ok(())
 }
